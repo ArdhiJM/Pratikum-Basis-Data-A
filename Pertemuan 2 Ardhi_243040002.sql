@@ -142,3 +142,127 @@ SELECT * FROM Pelanggan WHERE PelangganID = 2;
 COMMIT TRANSACTION;
 
 SELECT * FROM Pelanggan WHERE PelangganID = 2;
+
+
+PRINT 'Data Elektronik SEBELUM Update:';
+
+
+USE Toko_Retail_DB; 
+
+
+--Update Harga semua produk di KategoriID 1.
+PRINT 'Data Elektronik SEBELUM Update:';
+SELECT * FROM Produk WHERE KategoriID = 1 ;
+
+BEGIN TRANSACTION;
+
+UPDATE Produk
+SET Harga = Harga * 1.10 -- operasi aritmatika pada nilai kolom '
+WHERE KategoriID = 1;
+
+print 'Data Elektronik SETELAH Update (BELUM di-COMMIT):';
+
+select * from Produk where KategoriID = 1 ;
+
+--cek apakah ada kesalahan? jika tidak, commit.
+commit transaction;
+
+
+
+--DELETE (SATU BARIS SPESIFIK)
+print 'Data Produk SEBELUM Delete:';
+select * from Produk where SKU = 'BUK-001';
+
+begin transaction;
+
+delete from Produk
+where SKU = 'BUK-001';
+
+print 'Data Produk SETELAH Delete (Belum di-COMMIT):';
+select * from Produk where SKU = 'BUK-001'; --Harusnya kosong
+
+commit transaction;
+
+-- Bencana & ROLLBACK (Latihan Paling Penting)
+/* Cek data stok. HARUSNYA 50 dan 200 */
+print 'data stok sebelum bencana:';
+select SKU, NamaProduk, Stok from Produk;
+
+begin transaction; --WAJIB! ini adalah jaringan pengaman kita.
+
+--Bencana Terjadi : Lupa Klausa WHERE!
+update Produk
+set Stok = 0;
+
+/* Cek data setelah bencana. SEMUA STOK JADI 0! */
+PRINT 'Data Stok SETELAH Bencana (PANIK!):';
+SELECT SKU, NamaProduk, Stok FROM Produk;
+
+-- JANGAN COMMIT! BATALKAN!
+print 'Melakukan Rollback...';
+rollback transaction;
+
+/* Cek data setelah diselamatkan */
+PRINT 'Data Stok SETELAH di-ROLLBACK (AMAN):';
+SELECT SKU, NamaProduk, Stok FROM Produk;
+
+
+
+--Latihan 8: DELETE dan Pelanggaran FOREIGN KEY
+
+/* 1. Buat 1 pesanan untuk budi */
+insert into PesananHeader (PelangganID, StatusPesanan)
+values (1, 'Baru');
+
+PRINT 'Data Pesanan Budi:';
+SELECT * FROM PesananHeader WHERE PelangganID = 1;
+GO
+
+/* 2. Coba hapus Pelanggan Budi (PelangganID 1) */
+print 'mencoba hapus Budi...';
+begin transaction;
+
+delete from Pelanggan
+where PelangganID = 1 ;
+--perintah ini akan gagal--
+
+rollback transaction;--batalkan (walaupun sudah gagal)
+
+
+
+--Latihan 9 (Tantangan): INSERT ... SELECT
+create table ProdukArsip (
+    ProdukID int primary key, -- tanpa IDENTITY
+    SKU varchar(20) not null,
+    NamaProduk varchar(150) not null,
+    Harga decimal(10, 2) not null,
+    TanggalArsip date default getdate()
+);
+
+print 'melihat tabel ProdukArsip'
+select * from ProdukArsip;
+
+begin transaction;
+
+/* 2. Habiskan stok Kaos (SKU PAK-001) */
+update Produk set Stok = 0 where sku = 'PAK-001';
+
+/* 3. Salin data dari Produk ke ProdukArsip (INSERT ... SELECT) */
+insert into ProdukArsip (ProdukID, SKU, NamaProduk, Harga)
+select ProdukID, SKU, NamaProduk, Harga
+from Produk
+where Stok = 0;
+
+/* 4. Hapus data yang sudah diarsip dari tabel Produk */
+DELETE FROM Produk
+WHERE Stok = 0;
+
+/* Verifikasi */
+PRINT 'Cek Produk Aktif (Kaos harus hilang):';
+SELECT * FROM Produk;
+
+PRINT 'Cek Produk Arsip (Kaos harus ada):';
+SELECT * FROM ProdukArsip;
+
+--jika yakin, commit
+commit transaction;
